@@ -47,4 +47,29 @@ Step 3：配置域名解析
 
 总结一下，整个访问路径是：1）域名解析，解析到ALB实例；2）ALB实例监听HTTPS（需要绑定数字证书），然后转发给服务器组；3）服务器组中的每台ECS，通过IP地址+端口对外提供API访问。
 
+重点及避坑指南：健康检查的配置
+
+前面“Step 2：创建ALB实例”中，在创建服务器组的时候，健康检查是关闭的，客户端访问后台服务API的时候，就不稳定，时不时会返回504（Gateway Timeout）的错误。所以需要配置健康检查，有问题提前发现。
+
+在后台服务中，配置一个健康检查的路径: /healthcheck，Python的FastAPI代码如下：
+
+@app.get("/healthcheck", summary="服务健康检查", tags=["healthcheck"])
+async def healthcheck():
+    logging.info(f'healthcheck')
+    return {"message": "ATAI Shared Service", "version": "0.1.0", "status": "ok"}
+
+在后打开并编辑服务器组的健康检查，配置信息如下：
+    后端协议：HTTP
+    健康检查方法：GET
+    健康检查协议版本：HTTP1.1
+    健康检查端口：8001
+    健康检查路径：/healthcheck
+    健康检查域名：后端服务器内网IP
+    健康状态返回码：http_2xx,http_3xx
+    响应超时时间：5 秒
+    间隔时间：10 秒
+    健康阈值：3 次
+    不健康阈值：3 次
+
+
 
